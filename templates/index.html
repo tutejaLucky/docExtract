@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Purchase Order Extractor</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1 class="glow">🧠 AI Purchase Order Extractor</h1>
+    <div class="upload-card">
+      <input type="file" id="pdfFile" accept="application/pdf" />
+      <button id="uploadBtn">Upload & Extract</button>
+      <div id="status"></div>
+    </div>
+
+    <div id="results" class="hidden">
+      <h2>📄 Extraction Results</h2>
+      <pre id="output"></pre>
+    </div>
+  </div>
+
+  <script src="/static/js/script.js"></script>
+</body>
+</html>

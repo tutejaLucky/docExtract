@@ -1,0 +1,25 @@
+# Python cache files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+
+# Virtual environment
+po_scanner_env/
+venv/
+env/
+
+# Output or upload folders
+outputs/
+uploads/
+
+# System files
+.DS_Store
+Thumbs.db
+
+# IDE settings
+.vscode/
+.idea/
+
+# PDF or large files (optional)
+*.pdf

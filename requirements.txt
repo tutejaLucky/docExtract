@@ -1,0 +1,7 @@
+Flask
+pdfplumber
+pytesseract
+pdf2image
+Pillow
+dataclasses
+openpyxl
