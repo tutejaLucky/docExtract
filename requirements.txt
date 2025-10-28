@@ -1,4 +1,5 @@
 Flask
+gunicorn
 pdfplumber
 pytesseract
 pdf2image
