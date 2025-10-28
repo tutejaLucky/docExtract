@@ -6,3 +6,4 @@ pdf2image
 Pillow
 dataclasses
 openpyxl
+docstrange
