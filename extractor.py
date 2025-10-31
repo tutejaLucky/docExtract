@@ -48,19 +48,24 @@ class POScanner:
         Initialize PO Scanner with DocStrange
         
         Args:
-            api_key: Optional API key for increased rate limits
+            api_key: API key for cloud mode (no browser auth needed)
             use_local: If True, uses local CPU processing (requires Ollama)
         """
         if use_local:
             self.extractor = DocumentExtractor(cpu=True)
+            print("✅ Using local processing mode (Ollama)")
         else:
             self.extractor = DocumentExtractor(api_key=api_key)
+            if api_key:
+                print("✅ Using cloud mode with API key (no browser auth)")
+            else:
+                print("⚠️  WARNING: No API key - may require browser authentication")
     
     def process_pdf(self, pdf_path: str) -> PurchaseOrder:
         """
         Main method to process PDF and extract PO data using DocStrange
         """
-        print(f"Processing: {pdf_path}")
+        print(f"📄 Processing: {pdf_path}")
         
         # Extract document using DocStrange
         result = self.extractor.extract(pdf_path)
@@ -97,10 +102,13 @@ class POScanner:
         
         # Extract structured data
         try:
+            print("🔍 Extracting with schema...")
             structured_data = result.extract_data(json_schema=po_schema)
             po = self._convert_to_po_object(structured_data)
+            print("✅ Schema extraction successful")
         except Exception as e:
-            print(f"Schema extraction failed, trying field extraction: {e}")
+            print(f"⚠️  Schema extraction failed: {e}")
+            print("🔄 Trying field extraction...")
             # Fallback to specific field extraction
             po = self._extract_with_fields(result)
         
@@ -165,7 +173,7 @@ class POScanner:
         
         fields = [
             "invoice_number", "po_number", "po_date",
-            "vendor_name", "vendor_address", "vendor_gst",
+            "vendor_name", "vendor_address", "vendor_gst", "vendor_email",
             "buyer_name", "buyer_address", "buyer_gst",
             "item_name", "hsn_code", "quantity", "rate", "gst_rate",
             "subtotal", "total_gst", "grand_total"
@@ -185,6 +193,7 @@ class POScanner:
         po.vendor = VendorDetails(
             name=extracted.get('vendor_name', ''),
             address=extracted.get('vendor_address', ''),
+            email=extracted.get('vendor_email', ''),
             gst_number=extracted.get('vendor_gst', '')
         )
         
@@ -211,16 +220,6 @@ class POScanner:
         
         return po
     
-    def extract_as_markdown(self, pdf_path: str) -> str:
-        """Extract document as clean markdown"""
-        result = self.extractor.extract(pdf_path)
-        return result.extract_markdown()
-    
-    def extract_as_json(self, pdf_path: str) -> Dict:
-        """Extract document as JSON"""
-        result = self.extractor.extract(pdf_path)
-        return result.extract_data()
-    
     def save_to_json(self, po: PurchaseOrder, output_path: str):
         """Save PO data to JSON file"""
         data = {
@@ -238,7 +237,7 @@ class POScanner:
         with open(output_path, 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
         
-        print(f"✓ Saved to: {output_path}")
+        print(f"✅ Saved to: {output_path}")
     
     def save_to_csv(self, po: PurchaseOrder, output_path: str):
         """Save PO items to CSV file"""
@@ -267,121 +266,4 @@ class POScanner:
                     item.total_amount
                 ])
         
-        print(f"✓ Saved to: {output_path}")
-    
-    def batch_process(self, pdf_folder: str, output_folder: str = "output"):
-        """Process multiple PDFs in a folder"""
-        Path(output_folder).mkdir(exist_ok=True)
-        
-        pdf_files = list(Path(pdf_folder).glob("*.pdf"))
-        print(f"\nFound {len(pdf_files)} PDF files to process\n")
-        
-        results = []
-        for pdf_file in pdf_files:
-            try:
-                print(f"Processing: {pdf_file.name}")
-                po = self.process_pdf(str(pdf_file))
-                
-                # Save individual results
-                base_name = pdf_file.stem
-                self.save_to_json(po, f"{output_folder}/{base_name}.json")
-                
-                results.append({
-                    'file': pdf_file.name,
-                    'status': 'success',
-                    'po_number': po.po_number,
-                    'vendor': po.vendor.name,
-                    'total': po.grand_total
-                })
-                
-            except Exception as e:
-                print(f"Error processing {pdf_file.name}: {e}")
-                results.append({
-                    'file': pdf_file.name,
-                    'status': 'error',
-                    'error': str(e)
-                })
-        
-        # Save batch summary
-        with open(f"{output_folder}/batch_summary.json", 'w') as f:
-            json.dump(results, f, indent=2)
-        
-        print(f"\n✓ Batch processing complete. Results saved to {output_folder}/")
-        return results
-
-
-# Example usage
-if __name__ == "__main__":
-    # Initialize scanner
-    # Option 1: Cloud mode (free, no setup)
-    scanner = POScanner()
-    
-    # Option 2: Cloud mode with API key (higher rate limits)
-    # scanner = POScanner(api_key="your_api_key_here")
-    
-    # Option 3: Local mode (requires Ollama, 100% private)
-    # scanner = POScanner(use_local=True)
-    
-    # Process single PDF
-    pdf_path = "purchase_order.pdf"
-    
-    try:
-        print("\n" + "="*70)
-        print("PURCHASE ORDER EXTRACTION (Layout-Agnostic)")
-        print("="*70)
-        
-        po = scanner.process_pdf(pdf_path)
-        
-        # Display results
-        print(f"\n{'INVOICE DETAILS':-^70}")
-        print(f"Invoice Number: {po.invoice_number}")
-        print(f"PO Number: {po.po_number}")
-        print(f"Date: {po.po_date}")
-        
-        print(f"\n{'VENDOR DETAILS':-^70}")
-        print(f"Name: {po.vendor.name}")
-        print(f"Address: {po.vendor.address}")
-        print(f"Email: {po.vendor.email}")
-        print(f"GST Number: {po.vendor.gst_number}")
-        
-        if po.buyer.name:
-            print(f"\n{'BUYER DETAILS':-^70}")
-            print(f"Name: {po.buyer.name}")
-            print(f"Address: {po.buyer.address}")
-            print(f"GST Number: {po.buyer.gst_number}")
-        
-        print(f"\n{'ITEM DETAILS':-^70}")
-        print(f"Total Items: {len(po.items)}\n")
-        
-        for i, item in enumerate(po.items, 1):
-            print(f"Item {i}:")
-            print(f"  HSN Code: {item.hsn_code}")
-            print(f"  Name: {item.item_name}")
-            print(f"  Quantity: {item.quantity:,.0f} pcs")
-            print(f"  Rate: ₹{item.unit_price:,.2f}")
-            print(f"  GST: {item.gst_rate}%")
-            print(f"  Total: ₹{item.total_amount:,.2f}")
-            print()
-        
-        print(f"{'TOTALS':-^70}")
-        print(f"Subtotal: ₹{po.subtotal:,.2f}")
-        print(f"Total GST: ₹{po.total_gst:,.2f}")
-        print(f"Grand Total: ₹{po.grand_total:,.2f}")
-        print("="*70)
-        
-        # Save outputs
-        scanner.save_to_json(po, "po_output.json")
-        scanner.save_to_csv(po, "po_output.csv")
-        
-        print("\n✓ Extraction complete!")
-        
-        # Optional: Process multiple PDFs
-        # results = scanner.batch_process("pdf_folder", "output_folder")
-        
-    except FileNotFoundError:
-        print(f"\n❌ Error: PDF file '{pdf_path}' not found!")
-        print("Please ensure the PDF is in the same directory as this script.")
-    except Exception as e:
-        print(f"\n❌ Error processing PDF: {e}")
-        import traceback
-        traceback.print_exc()
+        print(f"✅ Saved to: {output_path}")
