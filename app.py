@@ -197,4 +197,4 @@ def fetch_data_from_db(po_number):
 if __name__ == "__main__":
     os.makedirs("uploads", exist_ok=True)
     os.makedirs("outputs", exist_ok=True)
-    app.run(debug=True)
+    app.run()
